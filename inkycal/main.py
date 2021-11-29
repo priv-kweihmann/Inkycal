@@ -6,12 +6,15 @@ Main class for inkycal Project
 Copyright by aceisace
 """
 
+import glob
+import io
 import os
 import traceback
 import arrow
 import time
 import json
 import logging
+import hashlib
 from logging.handlers import RotatingFileHandler
 
 from inkycal.display import Display
@@ -171,6 +174,9 @@ class Inkycal:
     # Path to store images
     self.image_folder = top_level+'/images'
 
+    # Remove old hashes
+    self._remove_hashes(self.image_folder)
+
     # Give an OK message
     print('loaded inkycal')
 
@@ -239,6 +245,47 @@ class Inkycal:
 
     self._assemble()
 
+  def _image_hash(self, _in):
+    """Create a md5sum of a path or a bytes stream
+    """
+    if not isinstance(_in, str):
+      image_bytes = _in.tobytes()
+    else:
+      try:
+        with open(_in) as i:
+          return i.read()
+      except FileNotFoundError:
+        image_bytes = None
+    return hashlib.md5(image_bytes).hexdigest() if image_bytes else ""
+
+  def _remove_hashes(self, basepath):
+    for _file in glob.glob(f"{basepath}/*.hash"):
+      try:
+        os.remove(_file)
+      except:
+        pass
+
+  def _write_image_hash(self, path, _in):
+    """Write hash to a file
+    """
+    with open(path, "w") as o:
+      o.write(self._image_hash(_in))
+
+  def _needs_image_update(self, _list):
+    """Check if any image has been updated or not.
+    Input a list of tuples(str, image)
+    """
+    res = False
+    for item in _list:
+      _a = self._image_hash(item[0])
+      _b = self._image_hash(item[1])
+      print("{f1}:{h1} -> {h2}".format(f1=item[0], h1=_a, h2=_b))
+      if _a != _b:
+        res = True
+        self._write_image_hash(item[0], item[1])
+    print("Refresh needed: {a}".format(a=res))
+    return res
+
   def run(self):
     """Runs main program in nonstop mode.
 
@@ -268,7 +315,10 @@ class Inkycal:
       errors = [] # store module numbers in here
 
       # short info for info-section
-      self.info = f"{current_time.format('D MMM @ HH:mm')}  "
+      if not self.settings.get('image_hash', False):
+        self.info = f"{current_time.format('D MMM @ HH:mm')}  "
+      else:
+        self.info = ""
 
       for number in range(1, self._module_number):
 
@@ -303,6 +353,9 @@ class Inkycal:
         Display = self.Display
 
         self._calibration_check()
+        if self._calibration_state:
+          # after calibration we have to forcefully rewrite the screen
+          self._remove_hashes(self.image_folder)
 
         if self.supports_colour == True:
           im_black = Image.open(f"{self.image_folder}/canvas.png")
@@ -313,8 +366,12 @@ class Inkycal:
             im_black = upside_down(im_black)
             im_colour = upside_down(im_colour)
 
-          # render the image on the display
-          Display.render(im_black, im_colour)
+          if not self.settings.get('image_hash', False) or self._needs_image_update([
+            (f"{self.image_folder}/canvas.png.hash", im_black),
+            (f"{self.image_folder}/canvas_colour.png.hash", im_colour)
+          ]):
+            # render the image on the display
+            Display.render(im_black, im_colour)
 
         # Part for black-white ePapers
         elif self.supports_colour == False:
@@ -325,7 +382,10 @@ class Inkycal:
           if self.settings['orientation'] == 180:
             im_black = upside_down(im_black)
 
-          Display.render(im_black)
+          if not self.settings.get('image_hash', False) or self._needs_image_update([
+            (f"{self.image_folder}/canvas.png.hash", im_black),
+          ]):
+            Display.render(im_black)
 
       print(f'\nNo errors since {counter} display updates \n'
             f'program started {runtime.humanize()}')
