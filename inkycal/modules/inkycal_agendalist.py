@@ -132,7 +132,7 @@ class AgendaList(inkycal_module):
       parser.load_from_file(self.ical_files)
 
     # Load events from all icalendar in timerange
-    upcoming_events = parser.get_events(today, today.shift(weeks=+52),
+    upcoming_events = parser.get_events(now, today.shift(weeks=+52),
                                         self.timezone)
     if upcoming_events:
       upcoming_events = upcoming_events[0:self.maxevents]
