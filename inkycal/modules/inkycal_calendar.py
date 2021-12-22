@@ -197,13 +197,7 @@ class Calendar(inkycal_module):
     # Draw a red/black circle with the current day of month in white
     icon = Image.new('RGBA', (icon_width, icon_height))
     current_day_pos = grid[int(now.day)]
-    x_circle,y_circle = int(icon_width/2), int(icon_height/2)
-    radius_w = int(icon_width * 0.2)
-    radius_h = int(icon_height * 0.2)
-    ImageDraw.Draw(icon).ellipse(
-      (x_circle-radius_w, y_circle-radius_h, x_circle+radius_w, y_circle+radius_h),
-      fill=None, outline='black')
-    write(icon, (0,0), (icon_width, icon_height), str(now.day),
+    write(icon, (0,0), (icon_width, icon_height), "[" + str(now.day) + "]",
           font=self.num_font, fill_height = 0.8)
     im_colour.paste(icon, current_day_pos, icon)
 
