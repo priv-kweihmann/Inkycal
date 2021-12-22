@@ -192,7 +192,7 @@ class Calendar(inkycal_module):
     for number in calendar_flat:
       if number != int(now.day):
         write(im_black, grid[number], (icon_width, icon_height),
-          str(number), font = self.num_font, fill_height = 0.5, fill_width=0.5)
+          str(number), font = self.num_font, fill_height = 0.95, fill_width=0.95)
 
     # Draw a red/black circle with the current day of month in white
     icon = Image.new('RGBA', (icon_width, icon_height))
